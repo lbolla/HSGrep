@@ -1,0 +1,10 @@
+Sorted Grep in Haskell
+
+Optimized grep for sorted files. Search for lines starting with <string> in a sorted file.
+Inspired by http://sourceforge.net/projects/sgrep/.
+
+Install:
+        $> cabal install
+
+Usage:
+        $> hsgrep <string> filename
