@@ -1,16 +1,5 @@
 module Main where
 
--- TODO
--- less imperative
--- use more of Chunk data struct
--- comments on SO
---      use MaybeT instead of IO Maybe
---      (http://book.realworldhaskell.org/read/monad-transformers.html)
---      use liftM to apply functions inside a monad
--- upload on hackage
--- usage
--- make github repo and post to CR
-
 import Prelude hiding (catch)
 import Control.Exception (finally)
 import Control.Monad (unless)
@@ -62,7 +51,7 @@ getCurrentLine :: Handle -> IO String
 getCurrentLine h = goToBOL h >> hGetLine h
 
 getPrevLine :: Handle -> MaybeT IO String
-getPrevLine h = MaybeT $ do
+getPrevLine h = MaybeT $
         goToBOLAndDo h $ do
                 hSeek h RelativeSeek (-2)
                 goToBOLAndDo h $ do
@@ -75,7 +64,7 @@ getPrevLine h = MaybeT $ do
                 bof <- isBOF h'
                 if bof
                    then return Nothing
-                   else do f
+                   else f
 
 goTo :: Handle -> Integer -> IO ()
 goTo h = hSeek h AbsoluteSeek
@@ -83,8 +72,8 @@ goTo h = hSeek h AbsoluteSeek
 search :: Chunk -> String -> MaybeT IO String
 search (Chunk h start end) str
         | start >= end = MaybeT $ return Nothing
-        | otherwise = MaybeT $ do
-                if (mid == (end - 1)) then return Nothing else do
+        | otherwise = MaybeT $
+                if mid == (end - 1) then return Nothing else do
                 goTo h mid
                 midLine <- liftIO $ getCurrentLine h
                 prevLine <- runMaybeT $ getPrevLine h
