@@ -16,7 +16,7 @@ Synopsis:            Sorted Grep
 -- Description:         
 
 -- URL for the project homepage or repository.
-Homepage:            https://github.com/lbolla
+Homepage:            https://github.com/lbolla/HSGrep
 
 -- The license under which the package is released.
 License:             BSD3
@@ -40,22 +40,32 @@ Build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or
 -- a README.
--- Extra-source-files:  
+Extra-source-files:  README
 
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.2
 
+Library
+
+  Build-depends:
+        base,
+        mtl,
+        transformers
+
+  Exposed-modules:
+        HSGrep
 
 Executable hsgrep
-  -- .hs or .lhs file containing the Main module.
-  Main-is:           HSGrep.hs
+
+  Main-is: Main.hs
   
-  -- Packages needed in order to build this package.
-  Build-depends:     base, directory, mtl, QuickCheck, test-framework, test-framework-quickcheck2, transformers
-  
-  -- Modules not exported by this package.
-  -- Other-modules:       
-  
-  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-  -- Build-tools:         
-  
+Test-suite hsgrep-properties
+    Main-is: hsgrep-properties.hs
+    Type: exitcode-stdio-1.0
+
+    Build-depends:
+        base,
+        directory,
+        QuickCheck,
+        test-framework,
+        test-framework-quickcheck2

@@ -1,18 +1,14 @@
-module Main where
+module HSGrep where
 
-import Prelude hiding (catch)
-import Control.Exception (finally)
 import Control.Monad (unless)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Data.List (isPrefixOf)
 import Data.Maybe (isNothing, fromJust)
-import System.Directory (getTemporaryDirectory, removeFile)
-import System.Environment (getArgs)
-import System.IO
-import System.IO.Error (catch)
-import Test.Framework (defaultMain, testGroup, Test)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
+import System.IO (
+        Handle, hTell, hSeek, hIsEOF, SeekMode (RelativeSeek),
+        SeekMode (AbsoluteSeek), hGetChar, hGetLine, hGetContents,
+        hFileSize)
 
 -- Chunk of a file
 data Chunk = Chunk Handle Integer Integer
@@ -21,17 +17,9 @@ data Chunk = Chunk Handle Integer Integer
 isNL :: Char -> Bool
 isNL c = c == '\n'
 
-prop_isNL :: Char -> Bool
-prop_isNL '\n' = isNL '\n'
-prop_isNL c = not $ isNL c
-
 -- Are we at the beginning of file?
 isBOF :: Handle -> IO Bool
 isBOF = fmap (== 0) . hTell
-
---  prop_isBOF_newFile :: IO Bool
---  prop_isBOF_newFile = withTempFile "prop_isBOF" $ \f h ->
---          isBOF h
 
 -- Go to beginning of line
 goToBOL :: Handle -> IO ()
@@ -91,29 +79,3 @@ hsgrep s h = do
         --  putStrLn $ show match
         c <- hGetContents h
         putStrLn . unlines $ takeWhile (isPrefixOf s) (lines c)
-
-main :: IO ()
-main = do
-        (s:fname:_) <- getArgs
-        withFile fname ReadMode (hsgrep s)
-
-runTests :: IO ()
-runTests = defaultMain tests
-
-tests :: [Test]
-tests = [
-        testGroup "isNL" [
-                testProperty "isNL" prop_isNL
-                ]--,
-        --  testGroup "isBOF" [
-        --          testProperty "newFile" prop_isBOF_newFile
-        --          ]
-        ]
-
-withTempFile :: String -> (FilePath -> Handle -> IO a) -> IO a
-withTempFile pattern func = do
-        tempdir <- catch getTemporaryDirectory (\_ -> return ".")
-        (tempfile, temph) <- openTempFile tempdir pattern
-        finally (func tempfile temph)
-                (do hClose temph
-                    removeFile tempfile)
