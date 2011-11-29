@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Exception (finally)
+import qualified Data.ByteString.Char8 as C
 import HSGrep
 import Prelude hiding (catch)
 import System.Directory (getTemporaryDirectory, removeFile)
@@ -10,8 +11,8 @@ import Test.Framework (defaultMain, testGroup, Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 prop_isNL :: Char -> Bool
-prop_isNL '\n' = isNL '\n'
-prop_isNL c = not $ isNL c
+prop_isNL '\n' = isNL $ C.pack "\n"
+prop_isNL c = not . isNL $ C.pack [c]
 
 --  prop_isBOF_newFile :: IO Bool
 --  prop_isBOF_newFile = withTempFile "prop_isBOF" $ \f h ->

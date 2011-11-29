@@ -49,6 +49,7 @@ Library
 
   Build-depends:
         base,
+        bytestring,
         mtl,
         transformers
 
