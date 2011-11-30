@@ -3,8 +3,7 @@ module HSGrep where
 import Control.Monad (unless)
 import Control.Monad.Trans (liftIO)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy.Char8 as C
 import Data.Maybe (isNothing, fromJust)
 import System.IO (
         Handle, hTell, hSeek, hIsEOF, SeekMode (RelativeSeek), SeekMode
@@ -14,8 +13,8 @@ import System.IO (
 data Chunk = Chunk Handle Integer Integer
 
 -- Is char newline?
-isNL :: B.ByteString -> Bool
-isNL c = c == C.pack "\n"
+isNL :: C.ByteString -> Bool
+isNL c = c == C.singleton '\n'
 
 -- Are we at the beginning of file?
 isBOF :: Handle -> IO Bool
@@ -30,22 +29,31 @@ goToBOL h = do
               if eof
                  then do hSeek h RelativeSeek (-2)
                          goToBOL h
-                 else do c <- B.hGet h 1
+                 else do c <- C.hGet h 1
                          unless (isNL c) $
                              do hSeek h RelativeSeek (-2)
                                 goToBOL h
 
-getCurrentLine :: Handle -> IO B.ByteString
-getCurrentLine h = goToBOL h >> B.hGetLine h
+hGetLine :: Handle -> IO C.ByteString
+hGetLine h = go h C.empty
+        where go :: Handle -> C.ByteString -> IO C.ByteString
+              go hdl acc = do
+                      c <- C.hGet hdl 1
+                      if (isNL c)
+                         then return $ acc
+                         else go hdl (C.append acc c)
 
-getPrevLine :: Handle -> MaybeT IO B.ByteString
+getCurrentLine :: Handle -> IO C.ByteString
+getCurrentLine h = goToBOL h >> hGetLine h
+
+getPrevLine :: Handle -> MaybeT IO C.ByteString
 getPrevLine h = MaybeT $
         goToBOLAndDo h $ do
                 hSeek h RelativeSeek (-2)
                 goToBOLAndDo h $ do
                         hSeek h RelativeSeek (-2)
                         goToBOL h
-                        line <- B.hGetLine h
+                        line <- hGetLine h
                         return $ Just line
         where goToBOLAndDo h' f = do
                 goToBOL h'
@@ -57,7 +65,7 @@ getPrevLine h = MaybeT $
 goTo :: Handle -> Integer -> IO ()
 goTo h = hSeek h AbsoluteSeek
 
-search :: Chunk -> B.ByteString -> MaybeT IO B.ByteString
+search :: Chunk -> C.ByteString -> MaybeT IO C.ByteString
 search (Chunk h start end) str
         | start >= end = MaybeT $ return Nothing
         | otherwise = MaybeT $
@@ -65,7 +73,7 @@ search (Chunk h start end) str
                 goTo h mid
                 midLine <- liftIO $ getCurrentLine h
                 prevLine <- runMaybeT $ getPrevLine h
-                if str `B.isPrefixOf` midLine && (isNothing prevLine || not (str `B.isPrefixOf` fromJust prevLine))
+                if str `C.isPrefixOf` midLine && (isNothing prevLine || not (str `C.isPrefixOf` fromJust prevLine))
                    then return $ Just midLine
                    else if str < midLine
                            then runMaybeT $ search (Chunk h start mid) str
@@ -76,9 +84,6 @@ hsgrep :: String -> Handle -> IO ()
 hsgrep s_ h = do
         len <- hFileSize h
         _ <- runMaybeT $ search (Chunk h 0 len) s
-        --  putStrLn $ show match
-        c <- B.hGetContents h
-        B.putStrLn . unsplitlines $ takeWhile (B.isPrefixOf s) (splitlines c)
+        c <- C.hGetContents h
+        C.putStrLn . C.unlines $ takeWhile (C.isPrefixOf s) (C.lines c)
         where s = C.pack s_
-              splitlines = C.split '\n'
-              unsplitlines = B.intercalate $ C.pack "\n"
